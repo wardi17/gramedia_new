@@ -1,0 +1,20 @@
+use [um_db]
+GO
+ALTER FUNCTION dbo.FUN_GetKodeNow()
+RETURNS VARCHAR(20)
+AS
+BEGIN
+    DECLARE @Kode VARCHAR(20);
+
+    SET @Kode = 'KN' +
+        RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR(4)),2) +
+        RIGHT('0' + CAST(MONTH(GETDATE()) AS VARCHAR(2)),2) +
+        RIGHT('0' + CAST(DAY(GETDATE()) AS VARCHAR(2)),2) +
+        RIGHT('0' + CAST(DATEPART(HOUR, GETDATE()) AS VARCHAR(2)),2) +
+        RIGHT('0' + CAST(DATEPART(MINUTE, GETDATE()) AS VARCHAR(2)),2) +
+        RIGHT('00' + CAST(DATEPART(MILLISECOND, GETDATE()) AS VARCHAR(3)),3);
+
+      RETURN LEFT(@Kode,14); -- pastikan 14 karakter saja
+END;
+GO
+PRINT dbo.FUN_GetKodeNow()
