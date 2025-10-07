@@ -125,11 +125,11 @@ async validateInput(event) {
   `;
   let no =1;
 const tbodyRows = data.map(item => {
-  const isInvalid = item.status_toko === 'N' || item.status_product === 'N'; 
+  const isInvalid = item.status_toko === 'N' || item.status_product === 'N' || item.status_partid === 'N'
   const statusText = isInvalid ? 'Tidak Valid' : 'Valid';
   const rowClass = isInvalid ? 'table-danger' : ''; // Bootstrap table-danger = merah
   const sttoko = item.status_toko === 'N' ? 'text-drak bg-warning ' : '';
-  const stproduk = item.status_product === 'N' ? 'text-drak bg-warning ' : '';
+  const stproduk = item.status_product === 'N' || item.status_partid === 'N' ? 'text-drak bg-warning ' : '';
   return `
     <tr class="${rowClass}">
       <td>${no++}</td>

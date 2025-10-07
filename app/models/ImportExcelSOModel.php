@@ -74,6 +74,7 @@ class ImportExcelSOModel extends Models
 
         // Panggil stored procedure validasi
         $query2 = "USP_ProsesValidasiUploadGMA '{$IDimport}'";
+        $this->consol_war($query2);
            $result = $this->db->baca_sql($query2);
              if (!$result) {
             throw new Exception("Query execution failed: " . odbc_errormsg($this->db));
@@ -95,6 +96,7 @@ class ImportExcelSOModel extends Models
                 "ppn"               =>  number_format(rtrim(odbc_result($result, 'ppn')),0,'.', ','),
                 "status_toko"       => rtrim(odbc_result($result, 'status_toko')),
                 "status_product"       => rtrim(odbc_result($result, 'status_product')),
+                "status_partid"       => rtrim(odbc_result($result, 'status_partid')),
             ];
         }
 

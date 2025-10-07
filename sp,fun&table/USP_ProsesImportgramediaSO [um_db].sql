@@ -287,7 +287,7 @@ CREATE TABLE #temptess2detail(
         '' AS voucherdocid3,
         0 AS cashdiscpercen,
         CONVERT(DATETIME, CONVERT(CHAR(10), GETDATE(), 120)) AS shipdate,
-        CU.UserId AS userid,
+        @username AS userid,
         GETDATE() AS lastdateaccess,
         0 AS subtotal, --total  unitprec * qty  dari detail
         0 AS subtotalafterdisc, --total payable dari detail
@@ -329,6 +329,7 @@ CREATE TABLE #temptess2detail(
     LEFT JOIN [bambi-bmi].[dbo].customer AS CU
         ON CU.CustomerID = MS.customer_id
     ORDER BY A.ItemNo ASC;
+
 
     -------------------------------------------------
     -- 7. Update nomor transaksi di setupNo sesuai jumlah data
@@ -527,7 +528,12 @@ SELECT
     DateInvoice,
     SOEntryDesc,
     DateDue,
-    SODocumenID,
+    --untuk Sodokument ditambah tahun berjalan
+    CASE
+    WHEN LEN(CAST(SODocumenID AS VARCHAR(10))) = 6 
+    THEN RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR(4)), 2) +'.' +SODocumenID
+    ELSE RIGHT(CAST(YEAR(GETDATE()) AS VARCHAR(4)), 2) +'.0' +SODocumenID
+    END AS SODocumenID,
     CurrencyID,
     SOCurrRate,
     UserIDEntry,
@@ -664,7 +670,7 @@ END
 GO
 
 -- Eksekusi contoh
--- EXEC USP_ProsesImportgramediaSO 'GMA-17594582','wardi'
+ EXEC USP_ProsesImportgramediaSO 'GMA-17598102','wardi'
 
 
 

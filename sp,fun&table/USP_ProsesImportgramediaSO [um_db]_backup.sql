@@ -21,7 +21,8 @@ BEGIN
     -- 1. Buat ulang tabel temp (hapus kalau sudah ada)
     -------------------------------------------------
     IF EXISTS ( SELECT [Table_name] FROM tempdb.information_schema.tables WHERE [Table_name] LIKE '#temptess%' ) BEGIN DROP TABLE #temptess; END;
-    IF EXISTS ( SELECT [Table_name] FROM tempdb.information_schema.tables WHERE [Table_name] LIKE '#temptess%' ) BEGIN DROP TABLE #temptess2; END;
+    IF EXISTS ( SELECT [Table_name] FROM tempdb.information_schema.tables WHERE [Table_name] LIKE '#temptess2%' ) BEGIN DROP TABLE #temptess2; END;
+    IF EXISTS ( SELECT [Table_name] FROM tempdb.information_schema.tables WHERE [Table_name] LIKE '#temptess2detail%' ) BEGIN DROP TABLE #temptess2detail; END;
 
     CREATE TABLE #temptess (
         ItemNo INT IDENTITY(1,1) PRIMARY KEY,
@@ -34,7 +35,7 @@ BEGIN
 	ItemNo INT,
 	IDimport VARCHAR(50) NOT NULL,
     Store VARCHAR(50),
-	[SOTransacID] [char](15) NOT NULL,
+	[SOTransacID] [char](15) NOT NULL PRIMARY KEY,
 	[descpajak] [char](10) NULL,
 	[cabang] [char](2) NULL,
 	[divisi] [char](5) NULL,
@@ -122,7 +123,54 @@ BEGIN
 	[statuscbd] [char](10) NULL,
 	[flag_cbd1] [char](1) NULL,
 	[flag_cbd2] [char](1) NULL
-)
+);
+
+
+CREATE TABLE #temptess2detail(
+	SOTransacID char(15) NOT NULL,
+	Amount float NULL,
+	Itemno float NULL,
+	Quantity float NULL,
+	UnitPrice float NULL,
+	PPNpercen float NULL,
+	parttype char(5) NULL,
+	partid char(10) NULL,
+	partname char(60) NULL,
+	prodclass char(10) NULL,
+	subprod char(10) NULL,
+	product char(10) NULL,
+	partnameorg char(60) NULL,
+	unitpriceorg float NULL,
+	discpercen float NULL,
+	discamount float NULL,
+	UserId char(10) NULL,
+	LastDateAccess datetime NULL,
+	QtyOutstanding float NULL,
+	QtyTempDelivery float NULL,
+	QtyDelivery float NULL,
+	komisiI float NULL,
+	komisiII float NULL,
+	pkomII float NULL,
+	QtyCancel float NULL,
+	itemnoso float NULL,
+	xrounded float NULL,
+	sotransacid2 char(15) NULL,
+	sotransacid3 char(15) NULL,
+	flagbmi char(1) NULL,
+	disc01 float NULL,
+	disc02 float NULL,
+	disc03 float NULL,
+	disc04 float NULL,
+	desc2 char(60) NULL,
+	num01 float NULL,
+	num02 float NULL,
+	num03 float NULL,
+	num04 float NULL,
+	num05 float NULL
+) ;
+    DECLARE @contsodtl NUMERIC(18,2);
+    DECLARE @constgramdtl NUMERIC(18,2);
+    DECLARE @ErrMsg VARCHAR(200);
     -------------------------------------------------
     -- 2. Variabel untuk cursor
     -------------------------------------------------
@@ -176,6 +224,7 @@ BEGIN
     -------------------------------------------------
     -- 6. Select hasil akhir dengan join ke master
     -------------------------------------------------
+  
     INSERT INTO #temptess2
     SELECT 
         A.ItemNo,
@@ -238,14 +287,14 @@ BEGIN
         '' AS voucherdocid3,
         0 AS cashdiscpercen,
         CONVERT(DATETIME, CONVERT(CHAR(10), GETDATE(), 120)) AS shipdate,
-        CU.UserId AS userid,
+        @username AS userid,
         GETDATE() AS lastdateaccess,
-        0 AS subtotal,
-        0 AS subtotalafterdisc,
+        0 AS subtotal, --total  unitprec * qty  dari detail
+        0 AS subtotalafterdisc, --total payable dari detail
         0 AS amountcashdisc,
-        0 AS subtotalaftercashdisc,
+        0 AS subtotalaftercashdisc, ---total payable dari detail
         0 AS amounttax,
-        0 AS totalamount,
+        0 AS totalamount, ---total payable dari detail
         'BMI' AS whslocation,
         CU.CustomerClass AS custclass,
         'N' AS flagDO,
@@ -287,11 +336,339 @@ BEGIN
     UPDATE [bambi-ns].[dbo].setupNo
     SET trans_no9 = @currentNo + (SELECT COUNT(*) FROM #temptess);
     
+-------------------------------------------------
+-- 8. Mencari data detail untuk dimasukkan ke temptess2detail ini jadi SoTransactionDetail
+-------------------------------------------------
 
-    SELECT * FROM #temptess2
+BEGIN TRANSACTION;
+    INSERT INTO #temptess2detail
+    SELECT 
+        b.SOTransacID,
+        a.payable AS Amount,
+        --ROW_NUMBER() OVER (PARTITION BY b.Store ORDER BY b.Store)
+        a.noid AS ItemNo,
+        a.qty AS Quantity,
+        d.unit_price AS UnitPrice,
+        0 AS PPNpercen,
+        d.parttype,
+        d.partid,
+        d.partname,
+        d.prodclass,
+        d.subprod,
+        d.product,
+        d.partname AS partnameorg,
+        d.harga_beli AS unitpriceorg,
+        35 AS discpercen, 
+        (d.unit_price - a.payable) AS discamount,
+        @username AS UserId,
+        GETDATE() AS LastDateAccess,
+        a.qty AS QtyOutstanding,
+        0 AS QtyTempDelivery,
+        0 AS QtyDelivery,
+        0 AS komisiI,
+        0 AS komisiII,
+        0 AS pkomII,
+        0 AS QtyCancel,
+        NULL AS itemnoso,
+        0 AS xrounded,
+        '' AS sotransacid2,
+        '' AS sotransacid3,
+        NULL AS flagbmi,
+        35 AS disc01,
+        0 AS disc02,
+        0 AS disc03,
+        0 AS disc04,
+        NULL AS desc2,
+        0 AS num01,
+        0 AS num02,
+        0 AS num03,
+        0 AS num04,
+        0 AS num05
+    FROM gramediaso_temp AS a
+    LEFT JOIN #temptess2 AS b ON b.Store = a.Store 
+    LEFT JOIN master_gramed_partid AS c ON c.partid_gramedia = a.product_number
+    LEFT JOIN [bambi-bmi].[dbo].partmaster AS d ON d.partid = c.partid_bambi
+    ORDER BY b.Store, a.noid ASC;
+
+
+    -------------------------------------------------
+    /* 9. Hitung subtotal dkk di derived table
+        - subtotal              -- total unitprice * qty dari detail
+        - subtotalafterdisc     -- total payable dari detail
+        - subtotalaftercashdisc -- total payable dari detail
+        - totalamount           -- total payable dari detail
+    */
+    -------------------------------------------------
+
+UPDATE T2
+SET 
+    T2.subtotal              = Agg.subtotal,
+    T2.subtotalafterdisc     = Agg.subtotalafterdisc,
+    T2.subtotalaftercashdisc = Agg.subtotalaftercashdisc,
+    T2.totalamount           = Agg.totalamount
+FROM #temptess2 AS T2
+INNER JOIN (
+    SELECT 
+        SOTransacID,
+        SUM(COALESCE(Quantity, 0) * COALESCE(UnitPrice, 0)) AS subtotal,
+        SUM(COALESCE(Amount, 0)) AS subtotalafterdisc,
+        SUM(COALESCE(Amount, 0)) AS subtotalaftercashdisc,
+        SUM(COALESCE(Amount, 0)) AS totalamount
+    FROM #temptess2detail
+    GROUP BY SOTransacID
+) AS Agg ON T2.SOTransacID = Agg.SOTransacID;
+
+
+-------------------------------------------------
+-- 10. Insert ke tabel SOTRANSACTION dan SOTRANSACTIONDETAIL di bambi-bmi
+-------------------------------------------------
+
+INSERT INTO [bambi-bmi].[dbo].SOTRANSACTION
+(
+    SOTransacID,
+    descpajak,
+    cabang,
+    divisi,
+    CustomerID,
+    DateEntry,
+    DateInvoice,
+    SOEntryDesc,
+    DateDue,
+    SODocumenID,
+    CurrencyID,
+    SOCurrRate,
+    UserIDEntry,
+    DateValidasi,
+    UserIDValidasi,
+    TaxId,
+    TaxPercen,
+    CustName,
+    Attention,
+    ShipAttention,
+    CustAddress,
+    kotamadya02,
+    kecamatan02,
+    kodepos02,
+    ShipAddress,
+    kotamadya03,
+    kecamatan03,
+    kodepos03,
+    City,
+    ShipCity,
+    Country,
+    ShipCountry,
+    TermCode,
+    FlagPosted,
+    SalesmanCode,
+    parttype,
+    coderegion,
+    codesubreg01,
+    codesubreg02,
+    custtitle,
+    shipcusttitle,
+    custphone,
+    shipcustphone,
+    custhp,
+    shipcusthp,
+    billcustfax,
+    shipcustfax,
+    voucherdocid,
+    voucherdocid2,
+    voucherdocid3,
+    cashdiscpercen,
+    shipdate,
+    userid,
+    lastdateaccess,
+    subtotal,
+    subtotalafterdisc,
+    amountcashdisc,
+    subtotalaftercashdisc,
+    amounttax,
+    totalamount,
+    whslocation,
+    custclass,
+    flagDO,
+    flagINV,
+    flagcancelSO,
+    flagcancelSOPosted,
+    komisiI,
+    komisiII,
+    pkomII,
+    QtyCancel,
+    flagcheck,
+    flagSO,
+    sotransacid2,
+    flagso01,
+    flagso02,
+    flagso03,
+    flagso04,
+    flagso05,
+    sotransacid3,
+    sotransacid4,
+    flagpjkso01,
+    flagpjkso02,
+    flagpjkso03,
+    flagpjkso04,
+    flagpjkso05,
+    statuscbd,
+    flag_cbd1,
+    flag_cbd2,
+    cdso,
+    voucher,
+    creditmemo
+)
+SELECT 
+    SOTransacID,
+    descpajak,
+    cabang,
+    divisi,
+    CustomerID,
+    DateEntry,
+    DateInvoice,
+    SOEntryDesc,
+    DateDue,
+    SODocumenID,
+    CurrencyID,
+    SOCurrRate,
+    UserIDEntry,
+    DateValidasi,
+    UserIDValidasi,
+    TaxId,
+    TaxPercen,
+    CustName,
+    Attention,
+    ShipAttention,
+    CustAddress,
+    kotamadya02,
+    kecamatan02,
+    kodepos02,
+    ShipAddress,
+    kotamadya03,
+    kecamatan03,
+    kodepos03,
+    City,
+    ShipCity,
+    Country,
+    ShipCountry,
+    TermCode,
+    FlagPosted,
+    SalesmanCode,
+    parttype,
+    coderegion,
+    codesubreg01,
+    codesubreg02,
+    custtitle,
+    shipcusttitle,
+    custphone,
+    shipcustphone,
+    custhp,
+    shipcusthp,
+    billcustfax,
+    shipcustfax,
+    voucherdocid,
+    voucherdocid2,
+    voucherdocid3,
+    cashdiscpercen,
+    shipdate,
+    userid,
+    lastdateaccess,
+    subtotal,
+    subtotalafterdisc,
+    amountcashdisc,
+    subtotalaftercashdisc,
+    amounttax,
+    totalamount,
+    whslocation,
+    custclass,
+    flagDO,
+    flagINV,
+    flagcancelSO,
+    flagcancelSOPosted,
+    komisiI,
+    komisiII,
+    pkomII,
+    QtyCancel,
+    flagcheck,
+    flagSO,
+    sotransacid2,
+    flagso01,
+    flagso02,
+    flagso03,
+    flagso04,
+    flagso05,
+    sotransacid3,
+    sotransacid4,
+    flagpjkso01,
+    flagpjkso02,
+    flagpjkso03,
+    flagpjkso04,
+    flagpjkso05,
+    statuscbd,
+    flag_cbd1,
+    flag_cbd2,
+    0 AS cdso,
+    0 AS voucher,
+    0 AS creditmemo
+FROM #temptess2;
+
+-------------------------------------------------
+-- Untuk detail 
+-------------------------------------------------
+
+INSERT INTO [bambi-bmi].[dbo].SOTRANSACTIONDETAIL
+SELECT * FROM #temptess2detail;
+    -------------------------------------------------
+    -- Validasi total: bandingkan total dari temp dengan yang sudah masuk
+    -------------------------------------------------
+
+    -- Hitung total di tabel tujuan
+    SELECT @contsodtl = ISNULL(SUM(Amount),0)
+    FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL
+    WHERE SOTransacID IN (SELECT SOTransacID FROM #temptess2);
     
+    IF @@ERROR <> 0
+    BEGIN
+        SET @ErrMsg = 'Error saat menghitung total di SOTRANSACTIONDETAIL';
+        ROLLBACK TRANSACTION;
+        RAISERROR(@ErrMsg,16,1);
+        RETURN;
+    END
+    -- Hitung total di gramediaso_temp
+    SELECT @constgramdtl = ISNULL(SUM(payable),0)
+    FROM gramediaso_temp
+    WHERE IDimport = @IDimport;
+
+    IF @@ERROR <> 0
+    BEGIN
+        SET @ErrMsg = 'Error saat menghitung total di gramediaso_temp';
+        ROLLBACK TRANSACTION;
+        RAISERROR(@ErrMsg,16,1);
+        RETURN;
+    END
+    -------------------------------------------------
+    -- Jika validasi lolos: hapus temp dan commit
+    -------------------------------------------------
+    DELETE FROM gramediaso_temp
+    WHERE IDimport = @IDimport;
+
+    IF @@ERROR <> 0
+    BEGIN
+        SET @ErrMsg = 'Error saat hapus gramediaso_temp';
+        ROLLBACK TRANSACTION;
+        RAISERROR(@ErrMsg,16,1);
+        RETURN;
+    END
+
+    COMMIT TRANSACTION;
 END
 GO
 
 -- Eksekusi contoh
-EXEC USP_ProsesImportgramediaSO 'GMA-17575619', 'Herman';
+ EXEC USP_ProsesImportgramediaSO 'GMA-17598061','wardi'
+
+
+
+
+
+
+

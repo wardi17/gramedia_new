@@ -99,21 +99,30 @@ select * from [um_db].[dbo].gramediaso_temp
  subtotalaftercashdisc=647292
  totalamount=647292 */
 
-delete FROM [bambi-bmi].[dbo].SOTRANSACTION  where  SOTransacID LIKE 'KN251003%'
-delete FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where  SOTransacID LIKE 'KN251003%'
+SELECT RIGHT(YEAR(GETDATE()), 2) AS Tahun2Digit
+
+delete FROM [bambi-bmi].[dbo].SOTRANSACTION  where Shipdate ='2025-10-07'
+delete FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where  SOTransacID LIKE 'KN251007%'
 
  select count(*) from  [um_db].[dbo].gramediaso_temp
 
-SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTION  where  SOTransacID LIKE 'KN251003%'
-SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where SOTransacID LIKE 'KN251003%'
+ delete from  [um_db].[dbo].gramediaso_temp
 
+SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTION  where  Shipdate ='2025-10-07'
+SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where SOTransacID LIKE 'KN251007%'
+
+
+
+SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTION  where  Shipdate ='2025-10-07' AND CustomerID='GAMJKTAIR'
+
+SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where SOTransacID='KN251007113522'
 
 SELECT *
 FROM [bambi-bmi].[dbo].SOTRANSACTION
 WHERE SOTransacID IN (
     SELECT SOTransacID
     FROM [bambi-bmi].[dbo].SOTRANSACTION
-    WHERE SOTransacID LIKE 'KN251003%'
+    WHERE SOTransacID LIKE 'KN251006%'
     GROUP BY SOTransacID
     HAVING COUNT(*) > 1
 )
@@ -125,21 +134,25 @@ SELECT COUNT(*) AS TotalDuplikat
 FROM (
     SELECT SOTransacID
     FROM [bambi-bmi].[dbo].SOTRANSACTION
-    WHERE SOTransacID LIKE 'KN251003%'
+    WHERE SOTransacID LIKE 'KN251006%'
     GROUP BY SOTransacID
     HAVING COUNT(*) > 1
 ) AS T;
 
 
 --NOT EXISTS (lebih aman & cepat biasanya)
-SELECT *
-FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL t 
-WHERE t.SOTransacID LIKE 'KN251003%'
+SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL t 
+WHERE t.SOTransacID LIKE 'KN251006%'
   AND NOT EXISTS (
       SELECT 1
       FROM [bambi-bmi].[dbo].SOTRANSACTION d
       WHERE d.SOTransacID = t.SOTransacID
   );
+
+--test delete
+--	208120230	4101-15
+-- 	10101	GAMJKTAIR
+
 
 --DELETE FROM [um_db].[dbo].gramediaso_temp
 /*

@@ -42,42 +42,52 @@ BEGIN
         id_toko INT,
         customer_id VARCHAR(200),
         status_toko CHAR(1),
-        status_product CHAR(1)
+        status_product CHAR(1),
+        status_partid CHAR(1)
     );
 
 
 
-    -- tambahkan validasi cek ke master_gramed_partid untuk product_number
-    -- jika tidak ada maka status_product = 'N' dan di gabung dngan toko jadi 
-    -- kalaw ada yang  status_toko = 'N' atau status_product = 'N' maka tampilkan data dari #temptess
-    -- Masukkan data hasil validasi
-    INSERT INTO #temptess
-    SELECT 
-        GT.IDimport,
-        GT.number,
-        GT.product_number,
-        GT.product_all,
-        GT.store,
-        GT.item_tax,
-        GT.price,
-        GT.qty,
-        GT.total_price,
-        GT.payable,
-        GT.ppn,
-        MS.id_toko,
-        MS.customer_id,
-        CASE WHEN MS.id_toko IS NULL THEN 'N' ELSE 'Y' END AS status_idtoko,
-         CASE WHEN MP.partid_gramedia IS NULL THEN 'N' ELSE 'Y' END AS status_product
-    FROM [um_db].[dbo].gramediaso_temp AS GT
-    LEFT JOIN [um_db].[dbo].master_gramed_lokasi AS MS
-        ON MS.id_toko = GT.store
-    LEFT JOIN [um_db].[dbo].master_gramed_partid AS MP
-        ON MP.partid_gramedia = GT.product_number
-        
-    WHERE IDimport = @IDimport;
+
+      INSERT INTO #temptess
+			SELECT 
+				GT.IDimport,
+				GT.number,
+				GT.product_number,
+				GT.product_all,
+				GT.store,
+				GT.item_tax,
+				GT.price,
+				GT.qty,
+				GT.total_price,
+				GT.payable,
+				GT.ppn,
+				MS.id_toko,
+				MS.customer_id,
+				CASE 
+					WHEN MS.id_toko IS NULL THEN 'N' 
+					ELSE 'Y' 
+				END AS status_idtoko,
+				CASE 
+					WHEN MP.partid_gramedia IS NULL THEN 'N' 
+					ELSE 'Y' 
+				END AS status_product,
+				CASE 
+					WHEN PM.partid IS NULL THEN 'N' 
+					ELSE 'Y' 
+				END AS status_partid
+			FROM [um_db].[dbo].gramediaso_temp AS GT
+			LEFT JOIN [um_db].[dbo].master_gramed_lokasi AS MS
+				ON MS.id_toko = GT.store
+			LEFT JOIN [um_db].[dbo].master_gramed_partid AS MP
+				ON MP.partid_gramedia = GT.product_number
+			LEFT JOIN [bambi-bmi].[dbo].[partmaster] AS PM
+				ON PM.partid = MP.partid_bambi
+			WHERE GT.IDimport = @IDimport;
+
 
     -- Jika masih ada status N → tampilkan data dari #temptess
-    IF EXISTS (SELECT 1 FROM #temptess WHERE status_toko = 'N'  OR status_product = 'N')
+    IF EXISTS (SELECT 1 FROM #temptess WHERE status_toko = 'N'  OR status_product = 'N' OR status_partid = 'N')
     BEGIN
         SELECT * FROM #temptess   ORDER BY  number ASC;
 		DELETE  FROM [um_db].[dbo].gramediaso_temp  WHERE  IDimport=@IDimport;
@@ -90,7 +100,7 @@ BEGIN
 END
 GO
 
-EXEC USP_ProsesValidasiUploadGMA 'GMA-17594576'
+EXEC USP_ProsesValidasiUploadGMA 'GMA-17598061'
 
 
  

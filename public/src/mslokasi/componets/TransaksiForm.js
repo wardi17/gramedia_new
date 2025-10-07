@@ -34,7 +34,7 @@ export default class TransaksiForm {
                 </div>
               <div class="mb-3">
                   <label class="form-label">Nama Toko</label>
-                  <input type="text" class="form-control" id="namatoko" name="namatoko" 
+                  <input disabled type="text" class="form-control" id="namatoko" name="namatoko" 
                     value="${this.data ? this.data.namatoko : ""}" required>
                 </div>
                   <div class="mb-3">
@@ -99,9 +99,14 @@ export default class TransaksiForm {
 
         if (customerElement) {
           customerElement.addEventListener("change", async (event) => {
-            const selectedValue = event.target.value;
-
+           const select = event.target;
+            const selectedValue = select.value;
+            const selectName = select.options[select.selectedIndex].text;
+            let splitName = selectName.split(" |")
+            let custname = splitName[1]
+         
             try {
+              $("#namatoko").val(custname);
               const alamat = await this.getAlamat(selectedValue);
            
               // set nilai input alamat
