@@ -17,6 +17,11 @@
 <link href="<?=base_url?>/assets/dist/css/bootstrap-icons.css" rel="stylesheet">
 <link rel="stylesheet" href="<?=base_url?>/assets/fontawesome/css/all.min.css">
  <script src="<?=base_url?>/assets/dist/js/jquery-3.7.1.min.js"></script>
+
+<link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+
+
     <style>
       .bd-placeholder-img {
         font-size: 1.125rem;
@@ -35,7 +40,8 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.22.4/dist/sweetalert2.all.min.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.22.4/dist/sweetalert2.min.css" rel="stylesheet">
 
-   
+
+
 
 
     <!-- Custom styles for this template -->

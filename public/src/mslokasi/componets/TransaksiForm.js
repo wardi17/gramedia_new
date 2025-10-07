@@ -6,9 +6,37 @@ export default class TransaksiForm {
     this.modalId = "transaksiModal";
     this.mode = mode;   // "add" atau "edit"
     this.data = data;   // kalau edit, isi data lama
-    
+     this.appendCustomStyles();
   }
+appendCustomStyles() {
+    const style = document.createElement('style');
+   style.textContent = `
+   /* ====== Styling TomSelect agar mirip Bootstrap ====== */
+      .ts-control {
+        font-family: var(--bs-body-font-family);
+        font-size: var(--bs-body-font-size);
+        border-radius: var(--bs-border-radius);
+        border: 1px solid var(--bs-border-color);
+        padding: 0.375rem 0.75rem;
+        min-height: calc(1.5em + 0.75rem + 2px);
+        line-height: 1.5;
+      }
 
+      .ts-control.focus {
+        border-color: var(--bs-primary);
+        box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), .25);
+      }
+
+      .ts-dropdown {
+        font-family: var(--bs-body-font-family);
+        font-size: var(--bs-body-font-size);
+        border-radius: var(--bs-border-radius);
+      }
+
+   `;
+   document.head.appendChild(style);
+
+}
  async render() {
     const modalWrapper = document.createElement("div");
     modalWrapper.innerHTML = `
@@ -28,7 +56,7 @@ export default class TransaksiForm {
                 </div>
                  <div class="mb-3">
                   <label class="form-label">Customer</label>
-                  <select type="text" class="form-control" id="customer" name="customer">
+                  <select type="text" class="form-control customer" id="customer" name="customer">
               
                   </select>
                 </div>
@@ -170,6 +198,21 @@ export default class TransaksiForm {
                         let name = value.name;
                         $("#customer").append($('<option/>').val(id).html(name));  
                       });
+
+                        // aktifkan Tom Select
+                        new TomSelect("#customer", {
+                          placeholder: "Pilih Customer...",
+                          searchField: "text",
+                          sortField: { field: "text", direction: "asc" },
+                            render: {
+                            option: function (data, escape) {
+                              return `<div class="py-2">${escape(data.text)}</div>`;
+                            },
+                            item: function (data, escape) {
+                              return `<div>${escape(data.text)}</div>`;
+                            }
+                          }
+                        });
                   // kalau custid ada, set value select
                       if (custid) {
                           $("#customer").val(custid).trigger("change");
@@ -189,7 +232,7 @@ export default class TransaksiForm {
                 }
     });
 
-
+              
   }
 
  async getAlamat(customerid){

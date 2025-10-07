@@ -74,7 +74,7 @@ class ImportExcelSOModel extends Models
 
         // Panggil stored procedure validasi
         $query2 = "USP_ProsesValidasiUploadGMA '{$IDimport}'";
-        $this->consol_war($query2);
+       $this->consol_war($query2);
            $result = $this->db->baca_sql($query2);
              if (!$result) {
             throw new Exception("Query execution failed: " . odbc_errormsg($this->db));

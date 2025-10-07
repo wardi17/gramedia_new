@@ -21,7 +21,6 @@ class Mslokasi extends Controller
 
     	public function index()
 		{
-		
 			$data["page"] ="mslokasi";
 			$data["userid"] =$this->userid;
 			$this->view('templates/header');

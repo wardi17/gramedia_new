@@ -1,6 +1,6 @@
 use [um_db]
 
-DROP TABLE gramediaso_temp
+--DROP TABLE gramediaso_temp
 CREATE TABLE gramediaso_temp(
     noid INT,
     IDimport VARCHAR(50) NOT NULL,

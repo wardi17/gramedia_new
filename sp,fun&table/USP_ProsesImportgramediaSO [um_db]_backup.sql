@@ -176,7 +176,8 @@ CREATE TABLE #temptess2detail(
     -------------------------------------------------
     DECLARE @Store VARCHAR(50),
             @Kode CHAR(14);
-
+   DECLARE @Tanggal DATETIME;
+    SET @Tanggal = GETDATE();
     -------------------------------------------------
     -- 3. Cursor ambil store dari tabel import
     -------------------------------------------------
@@ -194,12 +195,12 @@ CREATE TABLE #temptess2detail(
     WHILE @@FETCH_STATUS = 0
     BEGIN
         -- Generate kode pertama
-        SET @Kode = dbo.FUN_GetKodeNow();
+        SET @Kode = dbo.FUN_GetKodeNow(@Tanggal);
 
         -- Ulangi jika duplikat di #temptess
         WHILE EXISTS (SELECT 1 FROM #temptess WHERE SOTransacID = @Kode)
         BEGIN
-            SET @Kode = dbo.FUN_GetKodeNow();
+            SET @Kode = dbo.FUN_GetKodeNow(@Tanggal);
         END;
 
         -- Simpan hasil ke tabel temp
@@ -213,11 +214,18 @@ CREATE TABLE #temptess2detail(
     CLOSE c;
     DEALLOCATE c;
 
+    SELECT  * FROM #temptess
+
+    RETURN;
+
+    --stop test
     -------------------------------------------------
     -- 5. Ambil nomor transaksi sekarang dari setupNo
     -------------------------------------------------
     DECLARE @currentNo INT;
+    DECLARE @Thn INT;
 
+    SET @Thn = YEAR(GETDATE());
     SELECT @currentNo = trans_no9 
     FROM [bambi-ns].[dbo].setupNo WITH (UPDLOCK, HOLDLOCK);
 
@@ -329,6 +337,7 @@ CREATE TABLE #temptess2detail(
     LEFT JOIN [bambi-bmi].[dbo].customer AS CU
         ON CU.CustomerID = MS.customer_id
     ORDER BY A.ItemNo ASC;
+
 
     -------------------------------------------------
     -- 7. Update nomor transaksi di setupNo sesuai jumlah data
@@ -527,7 +536,8 @@ SELECT
     DateInvoice,
     SOEntryDesc,
     DateDue,
-    SODocumenID,
+    --untuk Sodokument ditambah tahun berjalan
+    dbo.fn_FormatSODocID(SODocumenID,@Thn) AS SODocumenID,
     CurrencyID,
     SOCurrRate,
     UserIDEntry,
@@ -664,7 +674,7 @@ END
 GO
 
 -- Eksekusi contoh
- EXEC USP_ProsesImportgramediaSO 'GMA-17598061','wardi'
+ EXEC USP_ProsesImportgramediaSO 'GMA-17598465','wardi'
 
 
 

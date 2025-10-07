@@ -154,7 +154,8 @@ const tbodyRows = data.map(item => {
   // Aktifkan DataTables
  this.Tampildatatabel();
  document.getElementById('buttoncontail').innerHTML = '';
-  const adaInvalid = data.some(item => item.status_toko === 'N' || item.status_product === 'N' );
+  const adaInvalid = data.some(item => item.status_toko === 'N' || item.status_product === 'N' || item.status_partid === 'N'
+   );
   const idimport = data.length > 0 ? data[0].IDimport : null;
 
   //console.log(adaInvalid); return;

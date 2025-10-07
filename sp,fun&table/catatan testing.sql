@@ -1,6 +1,8 @@
 select trans_no9 from  [bambi-ns].[dbo].setupNo
 UPDATE [bambi-ns].[dbo].setupNo SET trans_no9=28929
 
+UPDATE [bambi-ns].[dbo].setupNo SET trans_no9=0
+
 
 
 select top 1  * from [bambi-bmi].[dbo].SOTRANSACTION where SOTransacID like '%KN%' AND CustomerID='AEONSEN'
@@ -122,7 +124,7 @@ FROM [bambi-bmi].[dbo].SOTRANSACTION
 WHERE SOTransacID IN (
     SELECT SOTransacID
     FROM [bambi-bmi].[dbo].SOTRANSACTION
-    WHERE SOTransacID LIKE 'KN251006%'
+    WHERE SOTransacID LIKE 'KN251007%'
     GROUP BY SOTransacID
     HAVING COUNT(*) > 1
 )
@@ -134,7 +136,7 @@ SELECT COUNT(*) AS TotalDuplikat
 FROM (
     SELECT SOTransacID
     FROM [bambi-bmi].[dbo].SOTRANSACTION
-    WHERE SOTransacID LIKE 'KN251006%'
+    WHERE SOTransacID LIKE 'KN251007%'
     GROUP BY SOTransacID
     HAVING COUNT(*) > 1
 ) AS T;
@@ -142,7 +144,7 @@ FROM (
 
 --NOT EXISTS (lebih aman & cepat biasanya)
 SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL t 
-WHERE t.SOTransacID LIKE 'KN251006%'
+WHERE t.SOTransacID LIKE 'KN251007%'
   AND NOT EXISTS (
       SELECT 1
       FROM [bambi-bmi].[dbo].SOTRANSACTION d
