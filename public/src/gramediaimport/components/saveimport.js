@@ -74,7 +74,9 @@ async validateInput(event) {
   const data = { idimport: this.generateUniqueId() };
    let valid=true;
   if(file_excel == undefined){
-    $("#file_name").addClass('color-text').text("color data")
+    $("#file_name").removeClass()
+  .addClass("text-red-600 font-semibold animate-pulse")
+  .text("Tidak ada file yang di upload");
      valid = false;
   }
 
