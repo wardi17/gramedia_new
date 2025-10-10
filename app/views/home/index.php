@@ -15,7 +15,7 @@
             <label for="upload_file" class="block text-sm font-semibold text-gray-700 mb-2">Pilih File Excel</label>
             <input
             class="form-control w-full rounded-lg border border-gray-300 p-2 focus:ring-2 focus:ring-blue-400 focus:outline-none" 
-            type="file" id="upload_file" accept=".xls,.xlsx">
+            type="file" id="upload_file" accept=".xlsx">
             <small id="file_name" class="text-gray-500 mt-1 block">Belum ada file dipilih</small>
           </div>
           

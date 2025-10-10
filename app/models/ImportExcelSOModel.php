@@ -13,15 +13,16 @@ class ImportExcelSOModel extends Models
 
         // Pastikan file diupload
         if (!isset($_FILES["files"]) || $_FILES["files"]["error"] !== 0) {
-            return "File tidak diupload atau error!";
+            return array(
+                "status" => "error",
+                "message" => "File tidak diupload atau error!"
+            );
         }
 
         $tmp_file = $_FILES["files"]["tmp_name"];
 
         // Hapus data sementara sebelum insert baru
-        $queryDelete = "DELETE FROM $this->table_sotemp";
-
-  
+        $queryDelete = "DELETE FROM " . $this->table_sotemp;
         $this->db->baca_sql($queryDelete);
 
         // Baca file Excel
@@ -33,15 +34,68 @@ class ImportExcelSOModel extends Models
         $countRow = count($rows);
         $countNumber = 0;
 
+        // ✅ Baris header aslinya di baris ke-2
+            $expectedHeaders = array(
+                'A' => 'NO',
+                'B' => 'Product Number',
+                'C' => 'ALL',
+                'D' => 'Store',
+                'E' => 'Item Tax',
+                'F' => 'Price List Icd PPn',
+                'G' => 'Disc 35%',
+                'H' => 'Prie setelah Disc (icd PPn)',
+                'I' => 'Retail Base Price',
+                'J' => 'QTY',
+                'K' => 'Total Retail Base Price',
+                'L' => 'Payable',
+                'M' => 'PPN %'
+            );
+
+            // Lewati baris pertama (judul)
+            $headerRow = isset($rows[2]) ? $rows[2] : null; 
+
+            if (!$headerRow) {
+                return array(
+                    "status" => "error",
+                    "message" => "❌ File Excel tidak memiliki baris header yang valid (baris ke-2 kosong atau hilang)."
+                );
+            }
+
+        // ✅ Cek kesesuaian setiap kolom header
+        foreach ($expectedHeaders as $col => $expectedText) {
+            $actualText = isset($headerRow[$col]) ? trim($headerRow[$col]) : '';
+            if (strcasecmp($actualText, $expectedText) !== 0) {
+                return array(
+                    "status" => "error",
+                    "message" => "❌ Format file Excel tidak sesuai di kolom {$col}. 
+                                Ditemukan: '{$actualText}', seharusnya: '{$expectedText}'. 
+                                Gunakan template Excel yang benar."
+                );
+            }
+        }
+
+
+        $expectedColumnCount = count($expectedHeaders);
+
         foreach ($rows as $index => $row) {
             $countNumber++;
 
             // Lewati baris header
-            if ($index == 1 || $index == 2) continue;
+            if ($index <= 3) continue;
             // Lewati baris terakhir kosong
             if ($countRow == $countNumber) continue;
 
-            // Ambil dan bersihkan data
+            // ✅ Validasi jumlah kolom
+            $currentColumnCount = count($row);
+            if ($currentColumnCount < $expectedColumnCount) {
+                return array(
+                    "status" => "error",
+                    "message" => "❌ Baris ke-{$countNumber} memiliki kolom kurang. 
+                                Ditemukan {$currentColumnCount}, seharusnya {$expectedColumnCount}."
+                );
+            }
+
+            // Ambil isi data
             $number         = trim($row["A"]);
             $product_number = trim($row["B"]);
             $all            = trim($row["C"]);
@@ -56,45 +110,39 @@ class ImportExcelSOModel extends Models
             $payable        = (float)$this->substring($row["L"]);
             $ppn            = (float)$this->substring($row["M"]);
 
-            // 🔍 Validasi kolom wajib (sesuaikan dengan kebutuhan lu)
-            $requiredFields = [
+            // Cek kolom wajib
+            $requiredFields = array(
                 'A' => $number,
                 'B' => $product_number,
                 'C' => $all,
                 'D' => $store,
                 'J' => $qty,
                 'K' => $total_price
-            ];
+            );
 
-            $emptyCols = [];
+            $emptyCols = array();
             foreach ($requiredFields as $col => $val) {
                 if ($val === '' || $val === null) {
                     $emptyCols[] = $col;
                 }
             }
 
-            // Jika ada kolom kosong
             if (!empty($emptyCols)) {
                 $cols = implode(', ', $emptyCols);
-                
-                $pesan =[
-                    "status"=>'error',
-                     'message'=> "❌ Data kosong terdeteksi di baris ke-{$countNumber}, kolom: {$cols}. Harap lengkapi dulu sebelum upload.",
-                ];
-            
-                return $pesan;
+                return array(
+                    "status" => 'error',
+                    "message" => "❌ Data kosong terdeteksi di baris ke-{$countNumber}, kolom: {$cols}. Harap lengkapi data sebelum upload."
+                );
             }
 
-            // ✅ Jika valid, lanjut query
+            // Insert data
             $query = "
                 DECLARE @noid INT;
-
                 SELECT @noid = ISNULL(MAX(noid), 0) + 1
-                FROM $this->table_sotemp
-                WHERE IDimport = '{$IDimport}'
-                AND store = '{$store}';
+                FROM " . $this->table_sotemp . "
+                WHERE IDimport = '{$IDimport}' AND store = '{$store}';
 
-                INSERT INTO $this->table_sotemp
+                INSERT INTO " . $this->table_sotemp . "
                 (noid, IDimport, number, product_number, product_all, store, item_tax, price, qty, total_price, payable, ppn, price_list, disc, price_disc)
                 VALUES
                 (@noid, '{$IDimport}', '{$number}', '{$product_number}', '{$all}', '{$store}', '{$item_tax}',
@@ -104,44 +152,40 @@ class ImportExcelSOModel extends Models
             $this->db->baca_sql($query);
         }
 
-
-        // Panggil stored procedure validasi
+        // Jalankan validasi SP
         $query2 = "USP_ProsesValidasiUploadGMA '{$IDimport}'";
-       // $this->consol_war($query2);
-           $result = $this->db->baca_sql($query2);
-             if (!$result) {
+        $result = $this->db->baca_sql($query2);
+        if (!$result) {
             throw new Exception("Query execution failed: " . odbc_errormsg($this->db));
         }
-            $datas = [];
 
+        $datas = array();
         while (odbc_fetch_row($result)) {
-            $datas[] =[
+            $datas[] = array(
                 "IDimport"          => rtrim(odbc_result($result, 'IDimport')),
                 "number"            => rtrim(odbc_result($result, 'number')),
                 "product_number"    => (int)rtrim(odbc_result($result, 'product_number')),
                 "product_all"       => rtrim(odbc_result($result, 'product_all')),
-                "store"             => rtrim(odbc_result($result, 'store')), 
+                "store"             => rtrim(odbc_result($result, 'store')),
                 "item_tax"          => rtrim(odbc_result($result, 'item_tax')),
-                "price"             => number_format(rtrim(odbc_result($result, 'price')),0,'.', ','),
+                "price"             => number_format(rtrim(odbc_result($result, 'price')), 0, '.', ','),
                 "qty"               => (int) rtrim(odbc_result($result, 'qty')),
-                "total_price"       => number_format(rtrim(odbc_result($result, 'total_price')),0,'.', ','),
-                "payable"           => number_format(rtrim(odbc_result($result, 'payable')),0,'.', ','),
-                "ppn"               =>  number_format(rtrim(odbc_result($result, 'ppn')),0,'.', ','),
+                "total_price"       => number_format(rtrim(odbc_result($result, 'total_price')), 0, '.', ','),
+                "payable"           => number_format(rtrim(odbc_result($result, 'payable')), 0, '.', ','),
+                "ppn"               => number_format(rtrim(odbc_result($result, 'ppn')), 0, '.', ','),
                 "status_toko"       => rtrim(odbc_result($result, 'status_toko')),
-                "status_product"       => rtrim(odbc_result($result, 'status_product')),
-                "status_partid"       => rtrim(odbc_result($result, 'status_partid')),
-                 "price_list"         =>  number_format(rtrim(odbc_result($result, 'price_list')),0,'.', ','),
-                 "disc"               =>  number_format(rtrim(odbc_result($result, 'disc')),0,'.', ','),
-                 "price_disc"         =>  number_format(rtrim(odbc_result($result, 'price_disc')),0,'.', ','),
-            ];
+                "status_product"    => rtrim(odbc_result($result, 'status_product')),
+                "status_partid"     => rtrim(odbc_result($result, 'status_partid')),
+                "price_list"        => number_format(rtrim(odbc_result($result, 'price_list')), 0, '.', ','),
+                "disc"              => number_format(rtrim(odbc_result($result, 'disc')), 0, '.', ','),
+                "price_disc"        => number_format(rtrim(odbc_result($result, 'price_disc')), 0, '.', ','),
+            );
         }
 
-        $pesan =[
-                    "status"=>'berhasil',
-                     'message'=> $datas,
-                ];
-            
-        return $pesan;
+        return array(
+            "status" => 'berhasil',
+            "message" => $datas,
+        );
     }
 
     private function substring($value)

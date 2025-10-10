@@ -62,7 +62,7 @@ class SaveImport {
         }
       
     } catch (error) {
-     
+      document.getElementById("buttoncontail").innerHTML = "";
       this.container.innerHTML = '<p>Gagal memuat data.</p>';
     }
   }

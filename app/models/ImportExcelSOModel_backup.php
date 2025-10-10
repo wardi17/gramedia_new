@@ -20,8 +20,6 @@ class ImportExcelSOModel extends Models
 
         // Hapus data sementara sebelum insert baru
         $queryDelete = "DELETE FROM $this->table_sotemp";
-
-  
         $this->db->baca_sql($queryDelete);
 
         // Baca file Excel
@@ -30,52 +28,84 @@ class ImportExcelSOModel extends Models
         $sheet = $objPHPExcel->getActiveSheet();
         $rows = $sheet->toArray(null, true, true, true);
 
-      $this->consol_war($rows);
         $countRow = count($rows);
         $countNumber = 0;
+
         foreach ($rows as $index => $row) {
-           
             $countNumber++;
-            // Lewati baris judul dan header
+
+            // Lewati baris header
             if ($index == 1 || $index == 2) continue;
-            // Lewati baris terakhir (jika kosong)
+            // Lewati baris terakhir kosong
             if ($countRow == $countNumber) continue;
 
             // Ambil dan bersihkan data
-            $number         = (int)$row["A"];
-            $product_number = $row["B"];
-            $all            = $row["C"];
-            $store          = $row["D"];
-            $item_tax       = $row["E"];
-            $price          = $this->substring($row["F"]);
-            $qty            = (int)$row["G"];
-            $total_price    = (float)$this->substring($row["H"]);
-            $payable        = (float)$this->substring($row["I"]);
-            $ppn            = (float)$this->substring($row["J"]);
+            $number         = trim($row["A"]);
+            $product_number = trim($row["B"]);
+            $all            = trim($row["C"]);
+            $store          = trim($row["D"]);
+            $item_tax       = trim($row["E"]);
+            $price_list     = (float)$this->substring($row["F"]);
+            $disc           = (float)$this->substring($row["G"]);
+            $price_disc     = (float)$this->substring($row["H"]);
+            $price          = $this->substring($row["I"]);
+            $qty            = (int)$row["J"];
+            $total_price    = (float)$this->substring($row["K"]);
+            $payable        = (float)$this->substring($row["L"]);
+            $ppn            = (float)$this->substring($row["M"]);
 
-            // Query insert ke tabel sementara
+            // 🔍 Validasi kolom wajib (sesuaikan dengan kebutuhan lu)
+            $requiredFields = [
+                'A' => $number,
+                'B' => $product_number,
+                'C' => $all,
+                'D' => $store,
+                'J' => $qty,
+                'K' => $total_price
+            ];
+
+            $emptyCols = [];
+            foreach ($requiredFields as $col => $val) {
+                if ($val === '' || $val === null) {
+                    $emptyCols[] = $col;
+                }
+            }
+
+            // Jika ada kolom kosong
+            if (!empty($emptyCols)) {
+                $cols = implode(', ', $emptyCols);
+                
+                $pesan =[
+                    "status"=>'error',
+                     'message'=> "❌ Data kosong terdeteksi di baris ke-{$countNumber}, kolom: {$cols}. Harap lengkapi dulu sebelum upload.",
+                ];
+            
+                return $pesan;
+            }
+
+            // ✅ Jika valid, lanjut query
             $query = "
                 DECLARE @noid INT;
 
-                -- Ambil noid terakhir per store & IDimport, kalau kosong mulai dari 1
                 SELECT @noid = ISNULL(MAX(noid), 0) + 1
                 FROM $this->table_sotemp
                 WHERE IDimport = '{$IDimport}'
                 AND store = '{$store}';
 
                 INSERT INTO $this->table_sotemp
-                (noid,IDimport, number, product_number, product_all, store, item_tax, price, qty, total_price, payable, ppn)
+                (noid, IDimport, number, product_number, product_all, store, item_tax, price, qty, total_price, payable, ppn, price_list, disc, price_disc)
                 VALUES
-                (@noid,'{$IDimport}', '{$number}', '{$product_number}', '{$all}', '{$store}', '{$item_tax}',
-                 '{$price}', '{$qty}', '{$total_price}', '{$payable}', '{$ppn}')
+                (@noid, '{$IDimport}', '{$number}', '{$product_number}', '{$all}', '{$store}', '{$item_tax}',
+                '{$price}', '{$qty}', '{$total_price}', '{$payable}', '{$ppn}', '{$price_list}', '{$disc}', '{$price_disc}');
             ";
 
             $this->db->baca_sql($query);
         }
 
+
         // Panggil stored procedure validasi
         $query2 = "USP_ProsesValidasiUploadGMA '{$IDimport}'";
-       //$this->consol_war($query2);
+       // $this->consol_war($query2);
            $result = $this->db->baca_sql($query2);
              if (!$result) {
             throw new Exception("Query execution failed: " . odbc_errormsg($this->db));
@@ -98,11 +128,18 @@ class ImportExcelSOModel extends Models
                 "status_toko"       => rtrim(odbc_result($result, 'status_toko')),
                 "status_product"       => rtrim(odbc_result($result, 'status_product')),
                 "status_partid"       => rtrim(odbc_result($result, 'status_partid')),
+                 "price_list"         =>  number_format(rtrim(odbc_result($result, 'price_list')),0,'.', ','),
+                 "disc"               =>  number_format(rtrim(odbc_result($result, 'disc')),0,'.', ','),
+                 "price_disc"         =>  number_format(rtrim(odbc_result($result, 'price_disc')),0,'.', ','),
             ];
         }
 
-        //$this->consol_war($datas);
-        return $datas;
+        $pesan =[
+                    "status"=>'berhasil',
+                     'message'=> $datas,
+                ];
+            
+        return $pesan;
     }
 
     private function substring($value)

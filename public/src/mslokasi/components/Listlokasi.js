@@ -35,57 +35,112 @@ class Listlokasi {
   }
 
 
-  async render() {
-    this.root.innerHTML = ''; // bersihkan konten
+ async render() {
+  this.root.innerHTML = ''; // Bersihkan konten
 
-    // Buat container utama
-    const container = document.createElement('div');
-    container.style.padding = '20px';
+  // Buat container utama
+  const container = document.createElement('div');
+  container.style.padding = '20px';
 
-    // Baris header: title + tombol tambah di kanan
-    const headerBar = document.createElement('div');
-    headerBar.style.display = 'flex';
-    headerBar.style.justifyContent = 'space-between';
-    headerBar.style.alignItems = 'center';
-    headerBar.style.marginBottom = '20px';
+  // Baris header: title + tombol tambah di kanan
+  const headerBar = document.createElement('div');
+  headerBar.style.display = 'flex';
+  headerBar.style.justifyContent = 'space-between';
+  headerBar.style.alignItems = 'center';
+  headerBar.style.marginBottom = '20px';
 
-    const title = document.createElement('h4');
-    title.textContent = 'Import Master Lokasi Gramedia';
+  const title = document.createElement('h4');
+  title.textContent = 'Import Master Lokasi Gramedia';
 
-    const buttonTambah = ButtonTambah({
-      text: '+ Tambah',
-      onClick: async () => {
-        const oldmodal = document.getElementById('transaksiModal');
-        if (oldmodal) oldmodal.remove(); // hapus modal lama jika ada
-        const form = new TransaksiForm("add", null);
-        this.root.appendChild(await form.render());
-        var myModal = new bootstrap.Modal(document.getElementById('transaksiModal'), {
-          keyboard: false
-        });
-        myModal.show();
-         form.show();
-      }
+  const buttonTambah = ButtonTambah({
+    text: '+ Tambah',
+    onClick: async () => {
+      const oldmodal = document.getElementById('transaksiModal');
+      if (oldmodal) oldmodal.remove(); // Hapus modal lama jika ada
+      const form = new TransaksiForm("add", null);
+      this.root.appendChild(await form.render());
+      var myModal = new bootstrap.Modal(document.getElementById('transaksiModal'), {
+        keyboard: false
+      });
+      myModal.show();
+      form.show();
+    }
+  });
+
+  headerBar.appendChild(title);
+  headerBar.appendChild(buttonTambah);
+  container.appendChild(headerBar);
+
+  // List transaksi dengan loading state awal
+  const list = document.createElement('div');
+  list.id = 'dataList'; // ID untuk targeting mudah
+  list.style.minHeight = '200px'; // Hindari collapse UI saat loading
+
+  // Tampilkan loading indicator bertahap (spinner sederhana)
+  list.innerHTML = `
+    <div class="loading-container" style="
+      display: flex; justify-content: center; align-items: center; height: 200px;
+      font-size: 16px; color: #666;
+    ">
+      <div style="display: flex; flex-direction: column; align-items: center;">
+        <div class="spinner" style="
+          border: 4px solid #f3f3f3; border-top: 4px solid #3498db; 
+          border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;
+          margin-bottom: 10px;
+        "></div>
+        <p>Memuat data...</p>
+      </div>
+    </div>
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  `;
+
+  container.appendChild(list);
+  this.root.appendChild(container);
+
+  // Bind events dulu (sebelum data load, agar tombol responsive)
+  this.bindEvent();
+
+  // Fetch data secara async dan update bertahap
+  try {
+    const datalist = await this.getdatalist(); // Await di sini, UI sudah render
+
+    // Update tabel dengan fade-in bertahap
+    requestAnimationFrame(() => {
+      list.innerHTML = this.settable(datalist); // Render tabel
+      list.style.opacity = '0'; // Mulai dengan hidden untuk animasi
+      list.style.transition = 'opacity 0.5s ease-in-out'; // Fade-in smooth
+
+      // Trigger fade-in setelah render
+      requestAnimationFrame(() => {
+        list.style.opacity = '1';
+      });
+
+      // Init DataTables setelah render (untuk pagination/search agar bertahap)
+      this.Tampildatatabel();
     });
-
-    headerBar.appendChild(title);
-  
-    headerBar.appendChild(buttonTambah);
-
-    container.appendChild(headerBar);
-
-    // List transaksi (dummy contoh)
-    const list = document.createElement('div');
-    const datalist = await this.getdatalist();
-     list.innerHTML = this.settable(datalist);
-      // Aktifkan DataTables
-   // list.innerHTML = '<p>Daftar isi transaksi akan muncul di sini...</p>';
-    container.appendChild(list);
-
-    this.root.appendChild(container);
-    this.bindEvent();
-    this.Tampildatatabel();
-    //this.TampilCetak();
+  } catch (error) {
+    // Error handling bertahap: Ganti loading dengan error message
+    console.error('Error loading data:', error);
+    requestAnimationFrame(() => {
+      list.innerHTML = `
+        <div style="text-align: center; padding: 50px; color: #e74c3c;">
+          <p>Gagal memuat data. Silakan coba lagi.</p>
+          <button onclick="location.reload()" style="background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+            Refresh
+          </button>
+        </div>
+      `;
+      list.style.opacity = '1';
+    });
   }
+
+  //this.TampilCetak(); // Uncomment jika diperlukan
+}
+
+
+
 
   settable=(data)=>{
 
@@ -223,7 +278,7 @@ bindEvent() {
       // Data masih valid (misal disimpan 5 menit)
       const { data, timestamp } = JSON.parse(cached);
       const now = Date.now();
-      if (now - timestamp < 5 * 30 * 100) {
+      if (now - timestamp < 5 * 10 * 100) {
         // Data cache kurang dari 5 menit, langsung return
         return data;
       }
