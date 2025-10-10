@@ -1,6 +1,6 @@
 use [um_db]
 
---DROP TABLE gramediaso_temp
+DROP TABLE gramediaso_temp
 CREATE TABLE gramediaso_temp(
     noid INT,
     IDimport VARCHAR(50) NOT NULL,
@@ -9,6 +9,9 @@ CREATE TABLE gramediaso_temp(
     product_all VARCHAR(150) NOT NULL,
     store VARCHAR(50) NOT NULL,
     item_tax VARCHAR(100) NULL,
+    price_list FLOAT,
+    disc FLOAT,
+    price_disc FLOAT,
     price FLOAT,
     qty INT,
     total_price FLOAT,

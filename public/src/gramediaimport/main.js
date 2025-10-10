@@ -1,8 +1,8 @@
 
-import SaveImport from './componets/saveimport.js';
+import SaveImport from './components/saveimport.js';
 
 
-$(document).ready(function () {
+document.addEventListener("DOMContentLoaded", () => {
    
 const url = new URL(window.location.href);
 const pathSegments = url.pathname.split("/");
@@ -10,10 +10,6 @@ const lastSegment = pathSegments.filter(Boolean).pop(); // filter untuk hilangka
 // Kondisi berdasarkan segmen terakhir URL
 const root ="#rootlist";
 new SaveImport(root);
-
-
-
-   
    //and 
 });
 

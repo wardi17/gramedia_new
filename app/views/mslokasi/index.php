@@ -1,10 +1,6 @@
-<style>
-  /* .color-text{
-    texe-color
-  } */
-</style>
-<main class="container my-5">
-  <div class="bg-light p-2 rounded shadow-sm">
+<main class="max-w-6x mx-auto my-10 px-4">
+  <div class="bg-lime-50 shadow-xl rounded-2xl p-6 border border-gray-100">
+    
         <div id="root"></div>
     
   </div>

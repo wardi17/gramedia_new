@@ -2,11 +2,34 @@ import { baseUrl } from '../../config.js';
 import ProsesImport from './ProsesImport.js';
 class SaveImport {
   constructor(containerSelector) {
+        
     this.container = document.querySelector(containerSelector);
     this.handleAddClick();
+    this.appendCustomStyles();
   }
 
+  appendCustomStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+     #thead{
+        background-color:#E7CEA6 !important;
+        /* font-size: 8px;
+        font-weight: 100 !important; */
+        /*color :#000000 !important;*/
+      }
+      .table-hover tbody tr:hover td, .table-hover tbody tr:hover th {
+      background-color: #F3FEB8;
+    }
 
+    /* .table-striped{
+      background-color:#E9F391FF !important;
+    } */
+    .dataTables_filter{
+     padding-bottom: 20px !important;
+  }
+    `;
+    document.head.appendChild(style);
+  }
 
 
 
@@ -21,6 +44,7 @@ class SaveImport {
       const self = this;
     document.getElementById('form_upload_excel').addEventListener('submit', async function(e) {
       e.preventDefault();
+ 
       await self.saveDataFrom(e);
     });
 
@@ -33,11 +57,12 @@ class SaveImport {
 
     try {
         const data=  await this.sendDataToApi(dataInput);
-        let responsdata =data.data;
-      this.renderTable(responsdata);
+        if (Object.prototype.toString.call(data) === "[object Array]") {
+           this.renderTable(data);
+        }
+      
     } catch (error) {
-       console.log('Gagal memuat data:', error);
-       console.error('Gagal memuat data:', error);
+     
       this.container.innerHTML = '<p>Gagal memuat data.</p>';
     }
   }
@@ -82,17 +107,27 @@ async validateInput(event) {
           beforeSend: this.showLoading,
           success: function (result) {
                Swal.close(); // stop loading saat sukses
-            if (!result.error) {
-              resolve(result);
+               const data =result.data;
+               const status =data.status;
+              const message =data.message;
+            if (status !=="error") {
+              resolve(message);
             } else {
-              reject(new Error(result.error || "Unexpected response format"));
+            
+              reject("Unexpected response format");
+                Swal.fire({
+                      position: "center",
+                      icon: "error",
+                      title: message,
+                      showConfirmButton: true,
+                      //timer: 1500
+                    });
             }
           },
           error: (jqXHR, textStatus, errorThrown) => {
               Swal.close(); 
 
-            const errorMessage = jqXHR.responseJSON?.error || "Failed to fetch data";
-            reject(new Error(errorMessage));
+         
           }
         });
       });
@@ -103,17 +138,20 @@ async validateInput(event) {
   renderTable(data) {
    // console.log(data); return;
   const table = document.createElement('table');
-  table.className = 'table table-striped';
+  table.className = 'table table-striped table-hover';
   table.id = 'table1';
 
   const thead = `
-    <thead id="thead">
+    <thead id="thead" >
       <tr>
-        <th>NO</th>
+        <th class="text-center">No</th>
         <th>Product Number</th>
         <th>ALL</th>
         <th class="text-end">Store</th>
         <th class="text-end">Item Tax</th>
+        <th class="text-end">Price List Icd PPn</th>
+        <th class="text-end">Disc 35%</th>
+        <th class="text-end">Prie setelah Disc (icd PPn)</th>
         <th class="text-end">Retail Base Price</th>
         <th class="text-end">QTY</th>
         <th>Total Retail Base Price</th>
@@ -132,17 +170,20 @@ const tbodyRows = data.map(item => {
   const stproduk = item.status_product === 'N' || item.status_partid === 'N' ? 'text-drak bg-warning ' : '';
   return `
     <tr class="${rowClass}">
-      <td>${no++}</td>
-      <td class="${stproduk}">${item.product_number}</td>
-      <td>${item.product_all}</td>
-      <td class="text-end ${sttoko}">${item.store}</td>
-      <td class="text-end">${item.item_tax}</td>
-      <td class="text-end">${item.price}</td>
-      <td class="text-end">${item.qty}</td>
-      <td class="text-end">${item.total_price}</td>
-      <td class="text-end">${item.payable}</td>
-      <td class="text-end">${item.ppn}</td>
-      <td class="text-end fw-bold">${statusText}</td>
+      <td class="text-center" style="width:5%">${no++}</td>
+      <td style="width:7%" class="${stproduk}">${item.product_number}</td>
+      <td style="width:17%">${item.product_all}</td>
+      <td style="width:5%" class="text-end ${sttoko}">${item.store}</td>
+      <td style="width:7%"class="text-end">${item.item_tax}</td>
+      <td style="width:7%" class="text-end">${item.price_list}</td>
+      <td style="width:5%"class="text-end">${item.disc}</td>
+      <td style="width:5%" class="text-end">${item.price_disc}</td>
+      <td style="width:7%" class="text-end">${item.price}</td>
+      <td style="width:7%" class="text-end">${item.qty}</td>
+      <td style="width:7%" class="text-end">${item.total_price}</td>
+      <td style="width:7%" class="text-end">${item.payable}</td>
+      <td style="width:7%" class="text-end">${item.ppn}</td>
+      <td style="width:5%" class=" fw-bold">${statusText}</td>
     </tr>
   `;
 }).join('');
@@ -161,8 +202,11 @@ const tbodyRows = data.map(item => {
   //console.log(adaInvalid); return;
    if(!adaInvalid){
     const setbutton = document.querySelector("#buttoncontail");
-    setbutton.innerHTML =`<button type="button" class="btn btn-success px-4" id="btnProses">
-      <i class="fa-solid fa-play me-2"></i> Proses
+    setbutton.innerHTML =`<button type="button" 
+    class="flex items-center justify-center grap-1 bg-green-500 hover:bg-green-600 text-white px-2 h-[40px] rounded text-sm font-medium shadow-sm transition-all" 
+    
+    id="btnProses">
+     <i class="fa-solid fa-play text-xs"></i> Proses
     </button>`;
 
         // Event listener tombol proses
@@ -179,7 +223,6 @@ const tbodyRows = data.map(item => {
    }
 
 }
-
 
       Tampildatatabel(){
           const id = "#table1";

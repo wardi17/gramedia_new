@@ -175,48 +175,49 @@ CREATE TABLE #temptess2detail(
     -- 2. Variabel untuk cursor
     -------------------------------------------------
     DECLARE @Store VARCHAR(50),
-            @Kode CHAR(14);
-   DECLARE @Tanggal DATETIME;
+            @Kode CHAR(14),
+           @Tanggal DATETIME,
+            @Counter INT;
+            
     SET @Tanggal = GETDATE();
+    SET @Counter =0;
     -------------------------------------------------
     -- 3. Cursor ambil store dari tabel import
     -------------------------------------------------
-    DECLARE c CURSOR LOCAL FAST_FORWARD FOR
-        SELECT DISTINCT store
-        FROM gramediaso_temp
-        WHERE IDimport = @IDimport;
+		DECLARE c CURSOR FOR
+		SELECT DISTINCT store
+		FROM gramediaso_temp
+		WHERE IDimport = @IDimport;
 
-    OPEN c;
-    FETCH NEXT FROM c INTO @Store;
+		OPEN c;
+		FETCH NEXT FROM c INTO @Store;
 
     -------------------------------------------------
     -- 4. Loop setiap store, generate kode unik
     -------------------------------------------------
     WHILE @@FETCH_STATUS = 0
     BEGIN
-        -- Generate kode pertama
-        SET @Kode = dbo.FUN_GetKodeNow(@Tanggal);
+		 -- Buat kode pertama
+		SET @Kode = dbo.FUN_GetKodeNow(@Tanggal);
 
-        -- Ulangi jika duplikat di #temptess
-        WHILE EXISTS (SELECT 1 FROM #temptess WHERE SOTransacID = @Kode)
-        BEGIN
-            SET @Kode = dbo.FUN_GetKodeNow(@Tanggal);
-        END;
+		-- Cek duplikat di #temptess
+		WHILE EXISTS (SELECT 1 FROM #temptess WHERE SOTransacID = @Kode)
+		BEGIN
+			SET @Counter = @Counter + 1;
+			SET @Kode = LEFT(dbo.FUN_GetKodeNow(@Tanggal), 12) + RIGHT('00' + CAST(@Counter AS VARCHAR(2)), 2);
+		END;
 
-        -- Simpan hasil ke tabel temp
-        INSERT INTO #temptess (IDimport, Store, SOTransacID)
-        VALUES (@IDimport, @Store, @Kode);
+		-- Simpan ke tabel temp
+		INSERT INTO #temptess (IDimport, Store, SOTransacID)
+		VALUES (@IDimport, @Store, @Kode);
 
-        -- Ambil store berikutnya
-        FETCH NEXT FROM c INTO @Store;
+		FETCH NEXT FROM c INTO @Store;
     END;
 
     CLOSE c;
     DEALLOCATE c;
 
-    SELECT  * FROM #temptess
-
-    RETURN;
+   
 
     --stop test
     -------------------------------------------------
@@ -674,7 +675,7 @@ END
 GO
 
 -- Eksekusi contoh
- EXEC USP_ProsesImportgramediaSO 'GMA-17598465','wardi'
+ EXEC USP_ProsesImportgramediaSO 'GMA-17598499','wardi'
 
 
 

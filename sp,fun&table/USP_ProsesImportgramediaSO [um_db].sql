@@ -180,7 +180,7 @@ CREATE TABLE #temptess2detail(
             @Counter INT;
             
     SET @Tanggal = GETDATE();
-    SET @Counter =0;
+    SET @Counter =1;
     -------------------------------------------------
     -- 3. Cursor ambil store dari tabel import
     -------------------------------------------------
@@ -354,11 +354,11 @@ BEGIN TRANSACTION;
     INSERT INTO #temptess2detail
     SELECT 
         b.SOTransacID,
-        a.payable AS Amount,
+        (a.price_disc * a.qty) AS Amount, --price_disc 
         --ROW_NUMBER() OVER (PARTITION BY b.Store ORDER BY b.Store)
         a.noid AS ItemNo,
         a.qty AS Quantity,
-        d.unit_price AS UnitPrice,
+        a.price_list AS UnitPrice, --price_list
         0 AS PPNpercen,
         d.parttype,
         d.partid,
@@ -369,7 +369,7 @@ BEGIN TRANSACTION;
         d.partname AS partnameorg,
         d.harga_beli AS unitpriceorg,
         35 AS discpercen, 
-        (d.unit_price - a.payable) AS discamount,
+        (a.disc * a.qty) AS discamount, --disc
         @username AS UserId,
         GETDATE() AS LastDateAccess,
         a.qty AS QtyOutstanding,
@@ -675,7 +675,7 @@ END
 GO
 
 -- Eksekusi contoh
- EXEC USP_ProsesImportgramediaSO 'GMA-17598499','wardi'
+ EXEC USP_ProsesImportgramediaSO 'GMA-17599074','wardi'
 
 
 

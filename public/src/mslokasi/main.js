@@ -1,25 +1,27 @@
 
 
-import Listlokasi from './componets/Listlokasi.js';
+import Listlokasi from './components/Listlokasi.js';
 
-$(document).ready(function () {
+document.addEventListener("DOMContentLoaded",() =>{
+
 const url = new URL(window.location.href);
 const pathSegments = url.pathname.split("/");
 const lastSegment = pathSegments.filter(Boolean).pop(); // filter untuk hilangkan elemen kosong
 // Kondisi berdasarkan segmen terakhir URL
-   new Listlokasi();
+    new Listlokasi();
 
    //and 
 
-   $(document).on("click","#BtnBatal,#kembalihider",function(event){
-      event.preventDefault();
-      goBack();
-   });
+
 
   
 });
 
 
-export default  function goBack(){
-     new Listlokasi();
+export default function goBack(listBarangInstance) {
+  if (listBarangInstance && typeof listBarangInstance.refresh === "function") {
+    listBarangInstance.refresh(); // Jika Listbarang punya method refresh()
+  } else {
+    new Listlokasi(); // fallback jika belum ada instance reuse
+  }
 }

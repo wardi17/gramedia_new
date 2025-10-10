@@ -103,8 +103,8 @@ select * from [um_db].[dbo].gramediaso_temp
 
 SELECT RIGHT(YEAR(GETDATE()), 2) AS Tahun2Digit
 
-delete FROM [bambi-bmi].[dbo].SOTRANSACTION  where Shipdate ='2025-10-07'
-delete FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where  SOTransacID LIKE 'KN251007%'
+delete FROM [bambi-bmi].[dbo].SOTRANSACTION  where Shipdate ='2025-10-08'
+delete FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where  SOTransacID LIKE 'KN251008%'
 
  select count(*) from  [um_db].[dbo].gramediaso_temp
 
@@ -113,7 +113,10 @@ delete FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where  SOTransacID LIKE 'KN25
 SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTION  where  Shipdate ='2025-10-07'
 SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTIONDETAIL  where SOTransacID LIKE 'KN251007%'
 
-
+SELECT *
+FROM [bambi-bmi].[dbo].SOTRANSACTION
+WHERE Shipdate = '2025-10-08'
+ORDER BY CAST(SODocumenID AS FLOAT);
 
 SELECT * FROM [bambi-bmi].[dbo].SOTRANSACTION  where  Shipdate ='2025-10-07' AND CustomerID='GAMJKTAIR'
 
@@ -215,3 +218,14 @@ SELECT a.nik,a.namalengkap,a.namapanggilan,a.cabang,a.jabatan,a.tanggal_resign,a
 		ON b.nik=a.nik WHERE a.nik='77.24.126'
 
 
+
+-- untuk update mengilakan sepasi dan cek dulu
+SELECT partid_bambi AS sebelum,
+       REPLACE(partid_bambi, ' ', '') AS sesudah
+FROM master_gramed_partid
+WHERE partid_bambi LIKE '% %';
+
+--query update  hilagkan spasi
+UPDATE master_gramed_partid
+SET partid_bambi = REPLACE(partid_bambi, ' ', '')
+WHERE partid_bambi LIKE '% %';

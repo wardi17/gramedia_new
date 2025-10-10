@@ -43,10 +43,7 @@ BEGIN
         customer_id VARCHAR(200),
         status_toko CHAR(1),
         status_product CHAR(1),
-        status_partid CHAR(1),
-        price_list FLOAT,
-        disc FLOAT,
-        price_disc FLOAT
+        status_partid CHAR(1)
     );
 
 
@@ -78,10 +75,7 @@ BEGIN
 				CASE 
 					WHEN PM.partid IS NULL THEN 'N' 
 					ELSE 'Y' 
-				END AS status_partid,
-			  GT.price_list,
-			  GT.disc,
-			  GT.price_disc
+				END AS status_partid
 			FROM [um_db].[dbo].gramediaso_temp AS GT
 			LEFT JOIN [um_db].[dbo].master_gramed_lokasi AS MS
 				ON MS.id_toko = GT.store
@@ -96,7 +90,7 @@ BEGIN
     IF EXISTS (SELECT 1 FROM #temptess WHERE status_toko = 'N'  OR status_product = 'N' OR status_partid = 'N')
     BEGIN
         SELECT * FROM #temptess   ORDER BY  number ASC;
-		--DELETE  FROM [um_db].[dbo].gramediaso_temp  WHERE  IDimport=@IDimport;
+		DELETE  FROM [um_db].[dbo].gramediaso_temp  WHERE  IDimport=@IDimport;
         RETURN;  -- hentikan proses di sini
     END
     ELSE
@@ -106,7 +100,7 @@ BEGIN
 END
 GO
 
-EXEC USP_ProsesValidasiUploadGMA 'GMA-17598977'
+EXEC USP_ProsesValidasiUploadGMA 'GMA-17598952'
 
 
  

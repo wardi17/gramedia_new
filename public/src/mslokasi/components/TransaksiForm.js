@@ -89,7 +89,7 @@ appendCustomStyles() {
 
   show() {
 
-    this.getCutomer();
+    this.getCustomer();
 
     document.getElementById("Simpdandata")?.addEventListener("click", () => {
       // console.log("attachEventHandlers called:", this.sumbit);
@@ -175,65 +175,103 @@ appendCustomStyles() {
 
 
 
-  getCutomer(){
-      const url = "mslokasi/getcutomer";
-      const custid = this.data ? this.data.customerid : "";
-      // kosongkan dulu semua option
-          $("#customer").empty();
-          if (!custid) {
-            $("#customer").append('<option value="" disabled selected>Please Select</option>');
-        }
+ async getCustomer() {
+  const url = "mslokasi/getcutomer";
+  const custid = this.data?.customerid || "";
+  const $customer = $("#customer");
 
-    $.ajax({
-                url: `${baseUrl}/router/seturl`,
-                method:"GET",
-                dataType: "json",
-                contentType: "application/x-www-form-urlencoded; charset=UTF-8",
-                headers: { 'url': url },
-                success:function(result){
-                  const dataresult = result.data;
-                  if(dataresult !== null){
-                    $.each(dataresult,function(key,value){
-                        let id = value.id;
-                        let name = value.name;
-                        $("#customer").append($('<option/>').val(id).html(name));  
-                      });
+  // 🔹 Kosongkan option lama dulu
+  $customer.empty().append('<option value="" disabled selected>Pilih Customer...</option>');
 
-                        // aktifkan Tom Select
-                        new TomSelect("#customer", {
-                          placeholder: "Pilih Customer...",
-                          searchField: "text",
-                          sortField: { field: "text", direction: "asc" },
-                            render: {
-                            option: function (data, escape) {
-                              return `<div class="py-2">${escape(data.text)}</div>`;
-                            },
-                            item: function (data, escape) {
-                              return `<div>${escape(data.text)}</div>`;
-                            }
-                          }
-                        });
-                  // kalau custid ada, set value select
-                      if (custid) {
-                          $("#customer").val(custid).trigger("change");
-                      }
+  try {
+    // 🔹 Cek cache lokal biar load cepat
+    const cacheKey = "customer_data_cache";
+    const cached = sessionStorage.getItem(cacheKey);
+    let dataresult;
 
-                  }else{
-                    Swal.fire({
-                      position: "center",
-                      icon: "info",
-                      title: "customer yang di input tidak ada",
-                      showConfirmButton: true,
-                      //timer: 1500
-                    });
-                  }
+    if (cached) {
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < 5 * 30 * 100) {
+        dataresult = data; // gunakan cache jika masih baru (<5 menit)
+      }
+    }
 
-        
-                }
+    // 🔹 Kalau tidak ada cache, ambil data dari server
+    if (!dataresult) {
+      const response = await fetch(`${baseUrl}/router/seturl`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "url": url,
+        },
+        cache: "no-store",
+      });
+
+      if (!response.ok) throw new Error("Gagal mengambil data customer");
+
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
+
+      dataresult = result.data;
+      // Simpan cache
+      sessionStorage.setItem(
+        cacheKey,
+        JSON.stringify({ data: dataresult, timestamp: Date.now() })
+      );
+    }
+
+    // 🔹 Isi dropdown customer
+    if (Array.isArray(dataresult) && dataresult.length > 0) {
+      const options = dataresult
+        .map(
+          (item) =>
+            `<option value="${item.id}" ${
+              item.id === custid ? "selected" : ""
+            }>${item.name}</option>`
+        )
+        .join("");
+
+      $customer.append(options);
+      // 🔹 Hapus TomSelect lama jika ada
+      if ($customer[0].tomselect) {
+        $customer[0].tomselect.destroy();
+      }
+
+      // 🔹 Aktifkan TomSelect sekali saja
+     const tomSelect= new TomSelect("#customer", {
+        placeholder: "Pilih Customer...",
+        searchField: "text",
+        sortField: { field: "text", direction: "asc" },
+        render: {
+          option: (data, escape) => `<div class="py-2">${escape(data.text)}</div>`,
+          item: (data, escape) => `<div>${escape(data.text)}</div>`,
+        },
+      });
+         // 🔹 Kalau ada custid, set langsung ke TomSelect
+      if (custid) {
+        tomSelect.setValue(custid);
+      }
+      
+    } else {
+      Swal.fire({
+        position: "center",
+        icon: "info",
+        title: "Customer tidak ditemukan",
+        showConfirmButton: true,
+      });
+    }
+  } catch (err) {
+    //console.error("❌ Error getCustomer:", err.message);
+    Swal.fire({
+      position: "center",
+      icon: "error",
+      title: "Gagal memuat data customer",
+      text: err.message,
+      showConfirmButton: true,
     });
-
-              
   }
+}
+
 
  async getAlamat(customerid){
       let url = "mslokasi/getalamat";
@@ -247,12 +285,11 @@ appendCustomStyles() {
                    headers: { 'url': url },
                    //beforeSend: () => this.showLoading(), // Ensure this.showLoading is a method
                    success: (result) => {
-                     const datas = result.data;
-                     if (!result.error) {
-                       resolve(datas);
-                     } else {
-                       reject(new Error(result.error || "Unexpected response format"));
-                     }
+                     if (result && !result.error) {
+                        resolve(result.data);
+                      } else {
+                        reject(new Error(result.error || "Unexpected response format"));
+                      }
                    },
                    error: (jqXHR, textStatus, errorThrown) => {
                      const errorMessage = jqXHR.responseJSON?.error || "Failed to fetch data";
